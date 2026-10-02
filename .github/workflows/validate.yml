@@ -17,9 +17,11 @@ jobs:
 
       - name: Required files exist
         run: |
-          for f in index.html 404.html config.js site.webmanifest robots.txt .nojekyll assets/favicon.svg; do
+          for f in index.html 404.html config.js site.webmanifest robots.txt assets/favicon.svg assets/favicon-96x96.png; do
             test -s "$f" || { echo "::error::missing or empty: $f"; exit 1; }
           done
+          # .nojekyll ইচ্ছাকৃতভাবে ফাঁকা
+          test -e .nojekyll || { echo "::error::missing .nojekyll"; exit 1; }
           echo "all required files present"
 
       - name: JSON is valid
