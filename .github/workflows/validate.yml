@@ -56,7 +56,14 @@ jobs:
           fi
           echo "embed allowed"
 
-      - name: No stray secrets or TODO markers
+      - name: No stray secrets in site files
+        # নিজের প্যাটার্ন নিজেই মিলে যায় না — শুধু সাইট ফাইল স্ক্যান করা হয়
         run: |
-          ! grep -rniE '(ghp_|github_pat_|api[_-]?key|TODO|FIXME)' --include='*.html' --include='*.js' --include='*.yml' . \
-            && echo "clean"
+          if grep -rniE '(ghp_[A-Za-z0-9]{20}|github_pat_[A-Za-z0-9_]{20}|sk-[A-Za-z0-9]{20})' \
+               --include='*.html' --include='*.js' --include='*.css' --include='*.json' .; then
+            echo "::error::possible secret committed"; exit 1
+          fi
+          if grep -rniE '(TODO|FIXME|XXX:)' --include='*.html' --include='*.js' .; then
+            echo "::error::unfinished markers left in site files"; exit 1
+          fi
+          echo "clean"
