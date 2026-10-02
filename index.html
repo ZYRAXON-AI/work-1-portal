@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#080808" />
+    <title>ZYRAXON</title>
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-96x96.png" />
+    <link rel="apple-touch-icon" href="assets/favicon-96x96.png" />
+    <link rel="manifest" href="site.webmanifest" />
+
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #080808;
+        --fg: #ededed;
+        --muted: #8a8a8a;
+        --line: rgba(255, 255, 255, 0.12);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+      /* মূল অ্যাপ — পুরো স্ক্রিন, কোনো স্ক্রলবার নেই */
+      #app-frame {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        border: 0;
+        display: block;
+        background: #fff;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        z-index: 1;
+      }
+      #app-frame.ready {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      /* স্প্ল্যাশ / এরর ওভারলে */
+      #overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        text-align: center;
+        padding: 24px;
+        background: var(--bg);
+        transition: opacity 0.3s ease;
+      }
+      #overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .ring {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 3px solid var(--line);
+        border-top-color: var(--fg);
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      #msg {
+        font-size: 15px;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+        margin: 0;
+      }
+      #actions {
+        display: none;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      #actions.show {
+        display: flex;
+      }
+      button,
+      a.btn {
+        appearance: none;
+        cursor: pointer;
+        font: inherit;
+        font-size: 14px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--fg);
+        text-decoration: none;
+      }
+      button:hover,
+      a.btn:hover {
+        border-color: var(--fg);
+      }
+      button.primary,
+      a.btn.primary {
+        background: var(--fg);
+        color: #0b0b0b;
+        border-color: var(--fg);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ring {
+          animation-duration: 3s;
+        }
+        #app-frame,
+        #overlay {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <iframe
+      id="app-frame"
+      title="ZYRAXON"
+      src="about:blank"
+      allow="clipboard-read; clipboard-write; microphone; camera; geolocation; fullscreen; display-capture; payment"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen
+    ></iframe>
+
+    <div id="overlay">
+      <div class="ring" id="ring"></div>
+      <p id="msg">লোড হচ্ছে…</p>
+      <div id="actions">
+        <button id="retry" class="primary" type="button">আবার চেষ্টা করুন</button>
+        <a class="btn" id="openTab" target="_blank" rel="noopener">নতুন ট্যাবে খুলুন</a>
+      </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+      (function () {
+        var CFG = window.PORTAL_CONFIG || {};
+        var APP = CFG.appUrl || "https://work-1-kkvugplujprcnldc.prod-runtime.all-hands.dev/";
+        var TIMEOUT = CFG.loadTimeoutMs || 45000;
+        var RETRY_GAP = CFG.retryDelayMs || 4000;
+        var MAX_RETRIES = CFG.maxRetries || 3;
+        var PROBE_TIMEOUT = CFG.probeTimeoutMs || 12000;
+        var CACHE_BUST = CFG.cacheBust !== false;
+
+        var frame = document.getElementById("app-frame");
+        var overlay = document.getElementById("overlay");
+        var msg = document.getElementById("msg");
+        var ring = document.getElementById("ring");
+        var actions = document.getElementById("actions");
+        var retryBtn = document.getElementById("retry");
+        var openTab = document.getElementById("openTab");
+
+        document.title = CFG.title || "ZYRAXON";
+        msg.textContent = CFG.splashText || "লোড হচ্ছে…";
+        openTab.href = APP;
+
+        var attempts = 0;
+        var settled = false;
+        var alive = null;
+        var timer = null;
+        var retryTimer = null;
+
+        function clearTimers() {
+          if (timer) clearTimeout(timer);
+          if (retryTimer) clearTimeout(retryTimer);
+          timer = retryTimer = null;
+        }
+
+        function loading() {
+          settled = false;
+          ring.style.display = "block";
+          actions.classList.remove("show");
+          overlay.classList.remove("hidden");
+          frame.classList.remove("ready");
+          msg.textContent = CFG.splashText || "লোড হচ্ছে…";
+        }
+
+        function success() {
+          if (settled) return;
+          settled = true;
+          clearTimers();
+          attempts = 0;
+          frame.classList.add("ready");
+          ring.style.display = "none";
+          actions.classList.remove("show");
+          overlay.classList.add("hidden");
+          // পুরোপুরি লোড হওয়ার জন্য একটু সময় দিয়ে overlay সরানো
+          setTimeout(function () {
+            overlay.style.display = "none";
+          }, 400);
+        }
+
+function failed() {
+          if (settled) return;
+          settled = true;
+          clearTimers();
+          attempts += 1;
+          frame.classList.remove("ready");
+          overlay.style.display = "flex";
+          overlay.classList.remove("hidden");
+
+          if (attempts < MAX_RETRIES) {
+            // রিট্রাই চলাকালীন স্পিনার দেখাতে থাকবে — ফাঁকা স্ক্রিন নয়
+            ring.style.display = "block";
+            actions.classList.remove("show");
+            msg.textContent =
+              "অ্যাপটা লোড হতে সময় লাগছে… (" + attempts + "/" + MAX_RETRIES + ") আবার চেষ্টা হচ্ছে";
+            retryTimer = setTimeout(load, RETRY_GAP);
+            return;
+          }
+
+          ring.style.display = "none";
+          msg.textContent = "অ্যাপটা এখনো লোড হয়নি। সার্ভার চালু আছে কি না দেখে নিন।";
+          actions.classList.add("show");
+        }
+
+        // নেটওয়ার্ক প্রোব: সার্ভার সত্যিই সাড়া দিচ্ছে কি না।
+        // (ক্রোম নেটওয়ার্ক এররে ও error-page দেখায়, তবুও 'load' ইভেন্ট ফায়ার করে —
+        //  তাই শুধু load ইভেন্টে ভরসা করলে ফাঁকা পেজ হয়ে যেত। এই প্রোব সেটা ঠেকায়।)
+        function probe(ms) {
+          if (typeof fetch !== "function") return Promise.resolve(true);
+          var ctl = typeof AbortController === "function" ? new AbortController() : null;
+          var to = setTimeout(function () {
+            if (ctl) ctl.abort();
+          }, ms);
+          var opts = { mode: "no-cors", cache: "no-store", redirect: "follow" };
+          if (ctl) opts.signal = ctl.signal;
+          return fetch(APP, opts)
+            .then(function () {
+              return true;
+            })
+            .catch(function () {
+              return false;
+            })
+            .then(function (v) {
+              clearTimeout(to);
+              return v;
+            });
+        }
+
+        function load() {
+          clearTimers();
+          loading();
+          alive = probe(Math.min(PROBE_TIMEOUT, TIMEOUT));
+          // ক্যাশ এড়াতে আলাদা কিছুই নয় — একই লাইভ URL, নতুন ভিজিটরও একই অ্যাপ পাবে
+          frame.src =
+            APP +
+            (APP.indexOf("?") > -1 ? "&" : "?") +
+            "embed=portal" +
+            (CACHE_BUST ? "&t=" + Date.now() : "");
+          frame.classList.add("ready");
+          timer = setTimeout(function () {
+            if (!settled) failed();
+          }, TIMEOUT);
+        }
+
+        frame.addEventListener("load", function () {
+          if (frame.src === "about:blank") return;
+          var check = alive || Promise.resolve(true);
+          alive = null;
+          check.then(function (isAlive) {
+            if (isAlive) success();
+            else failed();
+          });
+        });
+        frame.addEventListener("error", function () {
+          failed();
+        });
+        retryBtn.addEventListener("click", function () {
+          attempts = 0;
+          load();
+        });
+
+        // অফলাইন থাকলেও সঠিক বার্তা
+        window.addEventListener("offline", function () {
+          if (!settled) msg.textContent = "ইন্টারনেট সংযোগ নেই…";
+        });
+
+        // নতুন ট্যাবে খোলা চাইলে মাউস ডান ক্লিক
+        frame.addEventListener("contextmenu", function (e) {
+          e.preventDefault();
+          window.open(APP, "_blank", "noopener");
+        });
+
+        load();
+      })();
+    </script>
+  </body>
+</html>

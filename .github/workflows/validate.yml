@@ -1,0 +1,60 @@
+name: Validate portal
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Required files exist
+        run: |
+          for f in index.html 404.html config.js site.webmanifest robots.txt .nojekyll assets/favicon.svg; do
+            test -s "$f" || { echo "::error::missing or empty: $f"; exit 1; }
+          done
+          echo "all required files present"
+
+      - name: JSON is valid
+        run: |
+          python3 -c "import json;json.load(open('site.webmanifest'));print('site.webmanifest OK')"
+
+      - name: manifest JSON schema basics
+        run: |
+          python3 - <<'PY'
+          import json
+          m = json.load(open('site.webmanifest'))
+          for k in ('name', 'start_url', 'display', 'icons'):
+              assert k in m, f'missing {k}'
+          assert m['display'] in ('standalone', 'fullscreen', 'minimal-ui', 'browser'), m['display']
+          assert isinstance(m['icons'], list) and m['icons'], 'icons must be a non-empty list'
+          for i in m['icons']:
+              assert i.get('src') and i.get('sizes') and i.get('type'), i
+          print('manifest OK')
+          PY
+
+      - name: Portal references the live app URL
+        run: |
+          url=$(grep -oP 'appUrl:\s*"\K[^"]+' config.js)
+          echo "app url: $url"
+          grep -q "$url" index.html || grep -q "$url" 404.html || { echo "::error::url not referenced by html"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 30 "$url")
+          echo "app http status: $code"
+          test "$code" = "200" || { echo "::error::app url returned $code"; exit 1; }
+          # iframe ব্লক না করে যাচ্ছে কিনা দেখা
+          if curl -sI -L --max-time 30 "$url" | grep -qiE '^x-frame-options:.*(deny|sameorigin)'; then
+            echo "::error::app sends X-Frame-Options, iframe embed will be blocked"; exit 1
+          fi
+          echo "embed allowed"
+
+      - name: No stray secrets or TODO markers
+        run: |
+          ! grep -rniE '(ghp_|github_pat_|api[_-]?key|TODO|FIXME)' --include='*.html' --include='*.js' --include='*.yml' . \
+            && echo "clean"

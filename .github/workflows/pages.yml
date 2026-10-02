@@ -1,0 +1,45 @@
+name: Deploy portal to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - name: Collect static site
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site/assets
+          cp index.html 404.html config.js site.webmanifest robots.txt _site/
+          cp .nojekyll _site/
+          cp assets/favicon.svg assets/favicon-96x96.png _site/assets/
+          ls -laR _site
+
+      - name: Upload static portal
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
