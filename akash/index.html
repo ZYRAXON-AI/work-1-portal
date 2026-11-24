@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>আকাশ — রাতের আকাশের একটি ছোট জানালা</title>
+<meta name="description" content="একটি ইন্টার‌অ্যাক্টিভ রাতের আকাশ — তারা, চাঁদ আর নক্ষত্রমণ্ডল।" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@300;400;600&family=Noto+Sans+Bengali:wght@300;400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="mark" href="#top">
+      <span class="mark-dot"></span>
+      <span>আকাশ</span>
+    </a>
+    <nav>
+      <a href="#moon">চাঁদ</a>
+      <a href="#stars">নক্ষত্র</a>
+      <a href="#note">নোট</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <p class="eyebrow">ঢাকা · <span id="clock">--:--</span></p>
+      <h1>আজ রাতে<br /><em>আকাশটা</em> কেমন?</h1>
+      <p class="lede">
+        স্ক্রিনের যেকোনো জায়গায় মাউস নাড়ান — তারারা আপনার দিকে টানবে।
+        নিচে স্ক্রল করলে চাঁদের আজকের চেহারা আর কয়েকটা নক্ষত্রমণ্ডলের গল্প পাবেন।
+      </p>
+      <div class="scroll-hint">
+        <span></span>
+        স্ক্রল করুন
+      </div>
+    </section>
+
+    <section id="moon" class="panel">
+      <div class="panel-copy">
+        <p class="label">আজকের চাঁদ</p>
+        <h2 id="phase-name">গণনা হচ্ছে…</h2>
+        <p class="body" id="phase-text">চাঁদের আলো হিসাব করা হচ্ছে।</p>
+        <dl class="stats">
+          <div><dt>তারিখ</dt><dd id="today">—</dd></div>
+          <div><dt>চক্রের দিন</dt><dd id="age">—</dd></div>
+          <div><dt>আলোকিত</dt><dd id="illum">—</dd></div>
+        </dl>
+      </div>
+      <div class="panel-visual">
+        <div class="moon-wrap">
+          <div class="moon" id="moon-disc"></div>
+          <div class="moon-glow"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="stars" class="constellations">
+      <p class="label">কয়েকটা চেনা আকৃতি</p>
+      <h2>নক্ষত্রমণ্ডল</h2>
+      <div class="cards">
+        <article class="card">
+          <div class="card-art" data-shape="saptarshi"></div>
+          <h3>সপ্তর্ষি</h3>
+          <p>সাতটি উজ্জ্বল তারার সরল সারি — উত্তর আকাশে সারা বছর দেখা যায়। কেউ কেউ এটাকে ভালুক বলে, কেউ বলে সাত ঋষি।</p>
+        </article>
+        <article class="card">
+          <div class="card-art" data-shape="kalpurush"></div>
+          <h3>কালপুরুষ</h3>
+          <p>শীতের আকাশের সবচেয়ে চোখে পড়া তারামণ্ডল। কোমরের তিনটি তারা — যে কেউ একবার দেখলে চিনে ফেলে।</p>
+        </article>
+        <article class="card">
+          <div class="card-art" data-shape="kassiopia"></div>
+          <h3>ক্যাসিওপিয়া</h3>
+          <p>পাঁচটি তারা মিলে একটা আঁকাবাঁকা W। উত্তর দিকের ঠান্ডা আকাশে বসে থাকে, সপ্তর্ষির উল্টো পাশে।</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="note" class="note">
+      <p class="label">ছোট্ট একটা কথা</p>
+      <blockquote>
+        “আমরা সবাই তারার ধুলো দিয়ে বানানো — তাই আকাশের দিকে তাকালে নিজের ঘর দেখার মতো লাগে।”
+      </blockquote>
+      <p class="sign">— <span id="year">2026</span></p>
+    </section>
+  </main>
+
+  <footer>
+    <span>আকাশ · একটা ছোট্ট জানালা</span>
+    <span id="coords">২৩.৮১° উ · ৯০.৪১° পূ</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
